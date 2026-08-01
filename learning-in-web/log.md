@@ -83,3 +83,25 @@ Python 等大文档章节数极多（25 章 / 282 个标题）。原左侧目录
 ### 备注
 - 移动端抽屉目前仅列 H2 章节（与桌面左侧一致）；小屏下的 H3/H4 浏览为已知限制，后续可给 `OutlineSidebar` 加 `variant` 在抽屉里切回嵌套树。
 - 仍无浏览器自动化，视觉以构建/逻辑验证为准；sticky 与 grid 列为确定性改动。
+
+---
+
+## v2.1 · 2026-08-01 — 本节目录标题层级化
+
+### 背景
+v2 拆出右侧“本节目录”后，其 H3/H4 视觉上完全扁平，看不出层级。
+
+### 根因
+原缩进规则 `.outline__sublist .outline__sublist .outline__row { padding-left: 26px }` 是为左侧三层树（H2/H3/H4 = 顶层/一级/二级 sublist）设计的。本节目录从 H3 起，H4 处于**一级** sublist，拿不到那条 26px 缩进；且 H3/H4 同用 `.outline__row--sub`，padding-left 都是 14px、字号仅 14→13、颜色相同 —— 故无区分。
+
+### 改动
+- `SectionOutline.vue`：H3 行改 `outline__row--h3`、H4 行改 `outline__row--h4`（语义化类，替代泛化的 `--sub`，避免与激活态的 CSS 特性竞赛）。
+- `main.css` 新增 `.outline--section` 作用域的层级阶梯：
+  - **H3**（小节）：13.5px / 字重 560 / `--color-text-2` / 顶部 8px 分组间距。
+  - **H4**（细分）：12.5px / `--color-text-4`；整组 `.outline__sublist` 加**左侧引导竖线**（`border-left`）+ 缩进，挂在父 H3 之下。
+  - 阶梯：字号 14→13.5→12.5、字重 600→560→400、颜色 text→text-2→text-4、缩进 0→0→深+竖线。
+- 顺手补齐 `.outline__chapter` 的标准 `line-clamp`（原先仅有 `-webkit-` 前缀）。
+
+### 验证
+- `pnpm build` ✅（含 type-check；CSS 9.87→10.32 KB）。
+- 特性核对：层级规则与激活态同为 (0,2,0)，靠源顺序保证激活态在后胜出，点击高亮不受影响。

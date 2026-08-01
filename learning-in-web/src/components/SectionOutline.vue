@@ -25,7 +25,7 @@ const chapter = computed(() => activeChapter(props.items, props.activeId))
       <ul v-if="chapter.children.length" class="outline__list">
         <li v-for="sub in chapter.children" :key="sub.id" class="outline__node">
           <div
-            class="outline__row outline__row--sub"
+            class="outline__row outline__row--h3"
             :class="{ 'is-active': activeId === sub.id }"
             :title="sub.text"
             @click="emit('select', sub.id)"
@@ -36,7 +36,7 @@ const chapter = computed(() => activeChapter(props.items, props.activeId))
           <ul v-if="sub.children.length" class="outline__sublist">
             <li v-for="grand in sub.children" :key="grand.id" class="outline__node">
               <div
-                class="outline__row outline__row--sub"
+                class="outline__row outline__row--h4"
                 :class="{ 'is-active': activeId === grand.id }"
                 :title="grand.text"
                 @click="emit('select', grand.id)"
