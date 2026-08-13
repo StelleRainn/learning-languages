@@ -1,3 +1,15 @@
+---
+id: python
+name: Python
+order: 1
+glyph: "🐍"
+tagline: 简洁优雅，无所不在
+description: 从语法基础到并发、数据模型与工程实践的系统笔记。
+accent: "#3776AB"
+gradient: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 45%, #facc15 100%)"
+light: true
+---
+
 # Python 3
 
 > 本笔记默认使用 **Python 3.10 及以上版本**。标注“3.11+”的内容需要更高版本。

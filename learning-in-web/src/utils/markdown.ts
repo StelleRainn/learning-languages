@@ -12,6 +12,63 @@ export function renderMarkdown(md: string): string {
   return marked.parse(md, { async: false }) as string
 }
 
+/** Notebook 顶部可携带的板块元数据（YAML frontmatter）。 */
+export interface NotebookMeta {
+  id: string
+  name: string
+  order?: number
+  glyph?: string
+  tagline?: string
+  description?: string
+  accent?: string
+  gradient?: string
+  light?: boolean
+}
+
+export interface ParsedNotebook {
+  /** frontmatter 元数据；无 frontmatter 时为空对象。 */
+  data: Partial<NotebookMeta>
+  /** 去掉 frontmatter 后的正文。 */
+  body: string
+}
+
+/**
+ * 剥离并解析 Notebook 顶部的 YAML frontmatter（--- ... --- 包裹）。
+ * 只支持本站用到的“标量键值”形式（字符串/数字/布尔），不引依赖。
+ * 无 frontmatter 时 data 为空、body 为原文。
+ */
+export function parseFrontmatter(src: string): ParsedNotebook {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(src)
+  if (!m) return { data: {}, body: src }
+  const raw = m[1]!
+  const body = src.slice(m[0].length)
+  const data: Record<string, unknown> = {}
+  for (const line of raw.split(/\r?\n/)) {
+    if (!line.trim() || line.trim().startsWith('#')) continue
+    const idx = line.indexOf(':')
+    if (idx < 0) continue
+    const key = line.slice(0, idx).trim()
+    let val: string = line.slice(idx + 1).trim()
+    // 去掉成对的双引号/单引号包裹
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1)
+    }
+    data[key] = parseScalar(val)
+  }
+  return { data: data as Partial<NotebookMeta>, body }
+}
+
+/** 把 frontmatter 字面量解析为标量：true/false/数字/否则字符串。 */
+function parseScalar(val: string): unknown {
+  if (val === 'true') return true
+  if (val === 'false') return false
+  if (/^-?\d+(\.\d+)?$/.test(val)) return Number(val)
+  return val
+}
+
 /** 从 Markdown 中提取首个一级标题文本，作为文档标题。 */
 export function extractTitle(md: string): string | null {
   const lines = md.split('\n')

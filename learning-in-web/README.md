@@ -2,7 +2,7 @@
 
 一个基于 Vue 3 的交互式学习网站，把本仓库的 Markdown Notebook 渲染成带有**章节大纲**和**舒适排版**的在线学习页面。主页采用 Apple 官网风格的大色块布局，每个色块对应一门编程语言；进入某板块后，左侧是类 IDE outline 的可折叠目录，右侧是渲染后的笔记正文。
 
-> **数据源**：直接使用项目上层目录（`../`）的 Notebook 原文，通过 Vite 的 `?raw` 导入，无需手动拷贝或转换。
+> **数据源**：仓库根的 `notebooks/*.md`。每个 Notebook 顶部用 YAML frontmatter 声明板块元数据（id / 配色 / 标语 / 图标 / 排序），Vite 在构建期通过 `import.meta.glob` 扫描整目录、解析 frontmatter，自动生成所有板块——**新增一门语言只需往 `notebooks/` 丢一个 `.md`，零代码改动**。
 
 ---
 
@@ -49,9 +49,9 @@ learning-in-web/
 │   ├── assets/
 │   │   └── main.css           # 全局样式：设计 token、排版、代码块、布局比例
 │   ├── data/
-│   │   └── subjects.ts        # 板块元数据 + ?raw 导入三份 Notebook
+│   │   └── subjects.ts        # import.meta.glob 扫描 ../notebooks/*.md → 动态生成板块
 │   ├── utils/
-│   │   └── markdown.ts        # marked 渲染、大纲解析、代码块增强
+│   │   └── markdown.ts        # frontmatter 解析、marked 渲染、大纲解析、代码块增强
 │   ├── components/
 │   │   ├── AppNav.vue         # 顶部导航（学习页自动边缘对齐）
 │   │   ├── MarkdownContent.vue# 正文渲染 + scrollspy，emit outline/active
@@ -70,11 +70,12 @@ learning-in-web/
 一条 Notebook 从原文到页面的完整链路：
 
 ```
-../Notebook-01-Python.md  (Markdown 原文)
-        │  Vite ?raw 导入（subjects.ts）
+../notebooks/*.md  (Markdown 原文 + 顶部 frontmatter 元数据)
+        │  Vite 构建期 import.meta.glob('?raw', eager) 扫描整目录
         ▼
-   Subject { notebook: string, title, accent, gradient, ... }
-        │  路由 /learn/python → LearnView(props.subject)
+   subjects.ts: 逐篇 parseFrontmatter() → { data: 板块元数据, body: 正文 }
+        │  按 data.order 排序 → 组装为 Subject[]
+        │  路由 /learn/:subject → LearnView(getSubject(id))
         ▼
    MarkdownContent  ── renderMarkdown(marked.parse) ──▶  HTML 字符串
         │  v-html 挂载到 DOM
@@ -95,8 +96,11 @@ learning-in-web/
 - **DOM 后处理而非 marked 自定义 renderer**
   marked 各大版本 renderer 签名多变。这里只用 `marked.parse` 产出标准 HTML，再在挂载后的真实 DOM 上做增强（高亮、加 id、加语言徽标）。这样既规避 API 漂移，又保证「大纲 id」与「渲染后标题」来自同一棵 DOM、天然一致。
 
-- **`?raw` 跨目录导入 + `fs.allow`**
-  Notebook 在仓库上层目录。`subjects.ts` 用 `import x from '../../../Notebook-XX.md?raw'` 导入；`vite.config.ts` 设置 `server.fs.allow: ['..']` 放开 dev server 的文件边界。构建期会内联进 bundle，无需运行时读取。
+- **`notebooks/` 目录即数据源（glob + frontmatter）**
+  Notebook 放仓库根 `notebooks/`，每篇顶部 YAML frontmatter 声明板块元数据。`subjects.ts` 用 `import.meta.glob('../notebooks/*.md', { query:'?raw', eager:true })` 在构建期扫描整目录，`parseFrontmatter` 剥离并解析元数据，正文交给 marked。新增语言 = 丢一个 `.md`，主页色块 / 导航 / 路由全自动出现。`vite.config.ts` 的 `server.fs.allow: ['..']` 放开上层目录边界（构建期 glob 不受此限，仅 dev server 需要）。
+
+- **frontmatter 自解析，不引依赖**
+  本站 frontmatter 只用标量键值（字符串/数字/布尔），`markdown.ts` 的 `parseFrontmatter` 用约 30 行正则剥离 `---` 块并解析，无需 gray-matter 等 YAML 库。`renderMarkdown` 收到的是已剥离 frontmatter 的 body，标题 id 等不受影响。
 
 - **outline 与正文一致性**
   大纲不是另写解析器，而是直接 `querySelectorAll('h2,h3,h4')` 取自已渲染 DOM。标题 id 按文档顺序赋值 `sec-0..`，侧栏点击即 `scrollIntoView` 定位。代码块里的 `# 注释` 行因 marked 正确识别代码围栏，不会被误判为标题。
@@ -117,26 +121,45 @@ learning-in-web/
 
 ## 如何新增一门语言
 
-1. 把 Notebook 放到项目上层目录，命名如 `Notebook-04-Rust.md`。
-2. 在 `src/data/subjects.ts` 顶部 `import rustNotebook from '../../../Notebook-04-Rust.md?raw'`。
-3. 在 `subjects` 数组里追加一项：
+**只需往 `notebooks/` 丢一个带 frontmatter 的 `.md`**，主页色块、导航、`/learn/<id>` 路由会自动出现，无需改任何代码。
 
-```ts
-{
-  id: 'rust',
-  name: 'Rust',
-  tagline: '内存安全，零成本抽象',
-  description: '所有权、生命周期与并发模型。',
-  glyph: '🦀',
-  accent: '#CE422B',
-  gradient: 'linear-gradient(135deg, #1f1f1f 0%, #b7410e 60%, #f59e0b 100%)',
-  light: true,
-  notebook: rustNotebook,
-  title: makeTitle(rustNotebook),
-}
+新建 `notebooks/Notebook-04-Rust.md`，顶部写 frontmatter：
+
+```markdown
+---
+id: rust
+name: Rust
+order: 4
+glyph: "🦀"
+tagline: 内存安全，零成本抽象
+description: 所有权、生命周期与并发模型。
+accent: "#CE422B"
+gradient: "linear-gradient(135deg, #1f1f1f 0%, #b7410e 60%, #f59e0b 100%)"
+light: true
+---
+
+# Rust
+
+正文从这里开始……
 ```
 
-主页色块、导航、`/learn/rust` 路由会自动出现，无需改其它文件。
+frontmatter 字段说明：
+
+| 字段 | 必填 | 说明 |
+| :--- | :---: | :--- |
+| `id` | ✓ | 板块唯一标识，决定路由 `/learn/<id>` 与导航高亮，建议用小写英文 |
+| `name` | ✓ | 显示名（导航、色块标题） |
+| `order` |   | 主页/导航排序，数字越小越靠前；缺省按 `id` 字母序 |
+| `glyph` |   | 一个 Emoji 图标 |
+| `tagline` |   | 色块副标题 |
+| `description` |   | 色块简短描述 |
+| `accent` |   | 主题色（CSS 颜色），用于学习页强调 |
+| `gradient` |   | 主页色块背景渐变（CSS gradient） |
+| `light` |   | `true` 表示色块背景偏深、文字用浅色 |
+
+正文里的首个 `# 标题` 会作为文档标题（学习页大标题与浏览器标签）。`id` 与标题可不同（如 `id: python` 但标题 `# Python 3`）。
+
+> dev server 运行时往 `notebooks/` 加文件，Vite 会自动重扫并热更新；构建时则打包进 bundle。
 
 ---
 
@@ -167,7 +190,7 @@ learning-in-web/
 
 ## 已知事项与后续方向
 
-- **首屏体积**：三份 Notebook 与 highlight.js 均打入主 chunk（gzip ≈ 220KB）。若要优化，可将 Notebook 改为按板块懒加载（`subjects` 拆分 + 动态 `import()`）。
+- **首屏体积**：所有 Notebook 经 `import.meta.glob({ eager: true })` 内联进主 chunk（当前 gzip ≈ 104KB）。数据层已天然支持懒加载——去掉 `eager`、把 `subjects` 拆成“清单 + 按需动态 `import()`”，即可让主页只加载元数据、点进板块才加载该篇正文。
 - **移动端小节导航**：窄屏（≤960px）右侧“本节目录”隐藏，抽屉内仅保留 H2 章节列表；如需在小屏也浏览 H3/H4，可在抽屉中改为嵌套树（给 `OutlineSidebar` 加 `variant`）。
 - **行宽**：正文当前填满中列。若觉得纯文字行偏长，可给 `.md-content` 的段落/标题加 `max-width`（代码块与表格保持满宽）。
 - **代码高亮性能**：Python 板块约 368 个代码块，首屏同步高亮约 100ms 级，可按需改为 `requestIdleCallback` 分片。
