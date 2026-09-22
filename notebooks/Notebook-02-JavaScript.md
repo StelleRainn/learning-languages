@@ -1,3 +1,15 @@
+---
+id: javascript
+name: JavaScript
+order: 2
+glyph: "🟨"
+tagline: 浏览器的通用语言
+description: 语言核心、异步模型、DOM 与现代工具链。
+accent: "#E8B400"
+gradient: "linear-gradient(135deg, #111827 0%, #4b5563 55%, #facc15 100%)"
+light: true
+---
+
 # JavaScript
 
 ## JavaScript语法和基础

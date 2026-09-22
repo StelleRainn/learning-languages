@@ -11,14 +11,12 @@
             "id": "2217eb711aa5a93c",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "image",
               "state": {
-                "file": "learning-in-web/log.md",
-                "mode": "source",
-                "source": false
+                "file": "appendix/v1.png"
               },
-              "icon": "lucide-file",
-              "title": "log"
+              "icon": "lucide-image",
+              "title": "v1"
             }
           }
         ]
@@ -156,13 +154,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "learning-in-web/log.md",
+                "file": "appendix/v1.png",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "log 的大纲"
+              "title": "v1 的大纲"
             }
           }
         ],
@@ -185,6 +183,7 @@
   },
   "active": "2217eb711aa5a93c",
   "lastOpenFiles": [
+    "learning-in-web/log.md",
     "Notebook-01-Python.md",
     "learning-in-web/log.md.tmp.3788.e2a75bdb5d85",
     "learning-in-web/README.md.tmp.3788.fd97d1a90cb2",
@@ -196,7 +195,6 @@
     "learning-in-web/dist/assets/LearnView-CjZLD96T.css",
     "learning-in-web/dist/assets/LearnView-T0IxsaGn.js",
     "learning-in-web/dist/assets/HomeView-BUPrb8H6.js",
-    "learning-in-web/log.md",
     "appendix/v1.png",
     "Notebook-03-Python.md",
     "learning-in-web/README.md",

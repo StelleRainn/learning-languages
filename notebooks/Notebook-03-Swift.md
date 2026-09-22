@@ -1,3 +1,15 @@
+---
+id: swift
+name: Swift
+order: 3
+glyph: "🦅"
+tagline: 为 Apple 生态而生
+description: 类型安全、协议与值类型，构建现代 App。
+accent: "#FA7343"
+gradient: "linear-gradient(135deg, #b91c1c 0%, #f97316 50%, #fbbf24 100%)"
+light: true
+---
+
 # Swift
 
 > Swift 是 Apple 推出的一门**类型安全**、**现代化**的编程语言，用于开发 iOS / iPadOS / macOS / watchOS / tvOS 应用。它融合了 C / Objective-C 的优点，同时去掉了历史包袱（如头文件、指针裸用等），并引入了**可选类型（Optional）**、**协议导向**、**值类型优先**等现代语言特性。

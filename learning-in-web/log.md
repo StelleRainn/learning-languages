@@ -105,3 +105,34 @@ v2 拆出右侧“本节目录”后，其 H3/H4 视觉上完全扁平，看不�
 ### 验证
 - `pnpm build` ✅（含 type-check；CSS 9.87→10.32 KB）。
 - 特性核对：层级规则与激活态同为 (0,2,0)，靠源顺序保证激活态在后胜出，点击高亮不受影响。
+
+---
+
+## v3 · 2026-08-13 — notebooks/ 目录化 + frontmatter，板块全自动生成
+
+### 目标
+把散落在仓库根的 Notebook 收拢进 `notebooks/`，并让 Vue 项目把该目录当作 source：扫描每个 `.md`、解析其 frontmatter 元数据，动态生成对应板块。新增一门语言不再改代码。
+
+### 关键决策（与用户确认）
+- **位置**：仓库根 `notebooks/`（笔记作为仓库级共享资源，web 是消费者；沿用 `fs.allow:['..']`）。
+- **元数据来源**：每个笔记顶部 YAML frontmatter（Obsidian Properties 原生友好），而非独立清单或推断。
+
+### 改动
+- 迁移：`git mv` 三份 `Notebook-0X-*.md` 进 `notebooks/`，各加 frontmatter（id/name/order/glyph/tagline/description/accent/gradient/light），值沿用原 `subjects.ts` 手写值。
+- `markdown.ts`：新增 `parseFrontmatter(src) → { data, body }`，约 30 行正则剥离 `---` 块、解析标量（字符串/数字/布尔、去引号），不引依赖；`renderMarkdown` 收到的已是剥离 frontmatter 的 body。
+- `subjects.ts` 重写：`import.meta.glob('../notebooks/*.md', { query:'?raw', import:'default', eager:true })` 扫描整目录 → 每篇 `parseFrontmatter` 一次 → 按 `order` 排序 → 组装 `Subject[]`。`Subject` 接口不变，UI 零改动；新增 `source` 字段便于调试。
+
+### 遇到的问题
+- `vue-tsc` 两处：① `Object.entries(modules)` 的值类型仍是 `{default:string}` 而非 `string`（即使指定 `import:'default'`，TS 不窄化）→ 改取 `mod.default`；② 返回对象漏写 `light` 字段 → 补 `light: data.light ?? false`。Vite build 本身都通过，仅类型检查拦下。
+- **运行时白屏（glob 路径）**：初版 glob 写 `'../notebooks/*.md'`，但 glob 相对路径相对**源文件**解析（subjects.ts 在 `src/data/`）→ 实际指向 `src/notebooks/`（不存在）→ 匹配为空 → `subjects: []`（不报错，build/dev 都"通过"，但首页无板块、`/learn/*` 全部"未找到"）。改 `'../../../notebooks/*.md'` 修复。教训：空匹配静默成功，改 glob 路径后必须额外核对匹配数。
+- **运行时崩溃（glob 取值形态）**：`{ query:'?raw', import:'default', eager:true }` 三者组合下，dev 把每个匹配项直接赋为字符串、build 则赋为模块对象——形态不一致。代码 `mod.default` 在 dev 取到 undefined → `extractTitle(undefined)` 崩。去掉 `import:'default'`，改走标准模块对象（dev 用 `import * as` 命名空间、`.default` 即字符串），两端一致。教训：`import:'default'` 与 `query` + `eager` 叠用时形态不稳，优先用默认模块对象。
+
+### 验证
+- `pnpm type-check` ✅、`pnpm build` ✅（89 模块）。
+- dev 运行时 `/`、`/learn/python`、`/learn/javascript`、`/learn/swift` 均 200，无报错。
+- **意外红利**：主 chunk gzip **220KB → 104KB**（近乎减半）。根因是 glob 的 `import:'default'` 让 chunk 划分比原先三条裸 `?raw` 导入更优，highlight.js 等被更好拆分。
+
+### 备注
+- 数据层现天然支持懒加载：去掉 `eager` + `subjects` 拆“清单 + 动态 import()”即可让主页只载元数据。本轮保持 eager，体积已大降，暂不需要。
+- frontmatter 仅支持标量键值；若将来需要列表（如多标签），再引 gray-matter 或扩展解析器。
+- README「如何新增一门语言」已从“改 3 处代码”改写为“丢一个 .md”，含字段说明表。
